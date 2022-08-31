@@ -1,0 +1,409 @@
+---
+title: "Insurance Cost"
+author: "Preeti Choubey"
+date: '2022-08-14'
+output: word_document
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=4,echo=FALSE)
+```
+
+
+![](https://s34782.pcdn.co/wp-content/uploads/2021/09/insurance-costs-rising-concept.jpg)
+
+# Overview
+The purpose of this project is to understand whether various factors like age, sex, BMI, number of children, smoking habits, and region have an impact on insurance costs. We'll try to look at each variable and their relationships by creating a detailed statistical analysis of the data through R.
+
+### Goal of analysis
+
+- Does smoking have an impact on one's insurance costs?
+
+- Do the average insurance charges of male smoker and female smoker differ?
+
+- Is there a linear relationship between age and insurance charges?
+
+- Does the BMI vary by region?
+
+## Loading the packages
+
+
+```{r}
+library(plotly)
+library(tidyverse)
+library(dplyr)
+```
+
+## Importing the data and getting a glimpse of it
+
+
+```{r}
+setwd("C:\\R555\\Choubey_CS55_final_project\\")
+insurance <- read.csv("insurance.csv")
+#str(insurance)
+glimpse(insurance)
+
+```
+### Variable Descriptions
+
+
+Let us look a bit closely at these columns for better understanding of the dataset.
+
+`AGE`: age of primary beneficiary
+
+`SEX`: insurance contractor's gender (female or male);
+
+`BMI`: body mass index which is expressed as the ratio between weight and square of an individual's height and is used as an indicator of the state of healthy weight (kg / m ^ 2). The ideal weight is excellent from 18.5 to 24.9;
+
+`CHILDREN`: Number of children covered by health insurance;
+
+`SMOKER`: Smoking/ Non-smoking
+
+`REGION`: The beneficiary's residential area in the USA (northeast, southeast, southwest, northwest);
+
+`CHARGES`: Individual medical costs billed by health insurance;
+
+ > Source: [Kaggle](https://www.kaggle.com/datasets/mirichoi0218/insurance)
+ 
+## Data preprocessing
+
+### Are there any missing values?
+
+```{r}
+cat("There are a total of", sum(is.na(insurance)), "missing values")
+
+```
+### Are there any duplicate rows?
+
+```{r}
+cat("There are a total of", sum(duplicated(insurance)), "duplicate rows")
+```
+We will remove that one duplicate row.
+
+```{r}
+insurance <- insurance %>% distinct()
+```
+
+
+## Descriptive statistics
+
+```{r}
+summary(insurance)
+```
+Description of categorical variables
+
+```{r}
+#table(insurance$sex)
+par(mfrow=c(1,2))
+s<- barplot(table(insurance$sex), col = c("pink","blue"), xlab = "Gender", ylim = c(0,800),
+        main =" Males & Females", ylab = "Frequencies")
+text(x=s, y=table(insurance$sex), labels = table(insurance$sex), pos = 3)
+data <- table(insurance$sex)
+slice.labels <- names(data)
+slice.percents <- round((data/sum(data))*100, digits = 2)
+slice.labels <- paste(slice.labels, slice.percents)
+slice.labels <- paste(slice.labels, "%", sep="")
+pie(data, labels = slice.labels, col = c("pink","blue"),main = "proportion of Gender")
+
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+#table(insurance$region)
+par(mfrow=c(1,2))
+data <- table(insurance$region)
+slice.labels <- names(data)
+slice.percents <- round((data/sum(data))*100, digits = 2)
+slice.labels <- paste(slice.labels, slice.percents)
+slice.labels <- paste(slice.labels, "%", sep="")
+pie(data, labels = slice.labels, col = rainbow(5), main = "Pie chart for Region")
+s<- barplot(table(insurance$region), col=rainbow(5), ylim=c(0,500) ,las=2)
+text(x=s, y=table(insurance$region), labels = table(insurance$region), pos=3)
+par(mfrow=c(1,1))
+```
+
+
+### 
+```{r}
+tab1 <- table(Smoker=insurance$smoker, Gender=insurance$sex)
+#tab1
+s<- barplot(tab1, beside=TRUE,legend=TRUE,col = c("orange","red"), xlab = "smoker", ylim = c(0,800),
+        main =" Males & Females", ylab = "Frequencies")
+text(x=s, y=tab1, labels = tab1, pos = 3 )
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+hist(insurance$age, col = "green", xlab = "Age", main = "Histogram of age", ylim = c(0,200))
+hist(insurance$bmi, col = "orange", xlab = "BMI", main="Histogram of BMI", ylim=c(0,500), xlim = c(0,60))
+
+par(mfrow=c(1,1))
+
+```
+
+
+
+
+```{r}
+par(mfrow=c(1,2))
+hist(insurance$charges, col = "seagreen", xlab = "Charges", main = "Histogram of Charges", ylim = c(0,400))
+insurance$logCharges <- log10(insurance$charges)
+hist(insurance$logCharges, col = "seagreen", xlab = "Charges", main = "Histogram of logCharges", ylim = c(0,400))
+par(mfrow=c(1,1))
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(logCharges~sex, data=insurance, col=c("pink", "blue"), main="LogCharges vs Gender")
+
+boxplot(logCharges~smoker, data=insurance, col=c("yellow", "red"), main="LogCharges vs Smoker")
+par(mfrow=c(1,1))
+```
+
+Sex doesn’t have a noticeable impact charges.
+
+On the other hand, `smoker` makes a significant impact.
+
+```{r}
+boxplot(logCharges~children, data=insurance, col=rainbow(5), main="LogCharges vs Childrenr")
+```
+
+
+We can see that as the number of children increases, so too do the insurance charges.
+
+
+```{r}
+
+plot_ly(insurance, x=~region, y=~logCharges, type = "violin")
+
+boxplot(charges~region, data=insurance, col=rainbow(4), main="Charges vs Region")
+
+```
+
+One's region doesn't have a significant impact on their insurance charges.
+
+
+```{r}
+library(psych)
+attach(insurance)
+data1 <- data.frame(age, bmi, children,  charges)
+#data1$insurance.smoker<-ifelse(data1$insurance.smoker == "yes", 1, 0)
+#data1$insurance.sex <- ifelse(data1$insurance.sex=='male', 1, 0)
+corPlot(data1)
+
+#cor(data1)
+#pairs(data1)
+
+```
+
+We can see that `charges` and `age` have a  positive correlation. There is also a positive, albeit weak, correlation between `charges` and `bmi`. 
+
+
+
+
+
+# 3. Describe the statistical methods you plan to use.
+
+- F-test for Simple Linear Regression
+
+- Two-sample t test for compare difference of two means
+
+- ANOVA Test, for the comparing of two or more population's means
+
+
+# Is there a linear relationship between age and insurgence charges?
+
+## 1. Set up the hypotheses and select the alpha level
+
+H0: β1 = 0  (there is no linear association)
+
+H1: β1 != 0 (there is a linear association)
+
+α = 0 .05
+
+## 2. Select the appropriate test statistic
+
+F = MS Reg / MS Res with 1 and n−2 degrees of freedom
+
+
+## 3. State the decision rule 
+
+Reject H0 if p ≤ alpha
+
+Otherwise, do not reject H0
+
+## 4. Compute the test statistic 
+
+```{r}
+m <- lm(charges~age, data = insurance)
+# Get anova table.
+anova.table <- anova(m)
+anova.table
+```
+
+## 5. Conclusion
+
+Reject H0 since .0001(p-value) < 0.05(alpha). We have significant evidence at the α=0.05 level that β1 != 0. That is, there is evidence of a significant linear association between age and insurance charges.
+
+
+# Does smoking have an impact on one's insurance costs?
+
+## 1. Set up the hypotheses and select the alpha level 
+H0: μ1 = μ2 The mean charges of smokers equal to nonsmokers
+
+H1: μ1  > μ2 The average charges of smokers is greater than nonsmokers
+
+
+alpha = 0.05
+
+## 2. Select the appropriate test-statistic 
+
+t = (x.bar1-x.bar2)/sqrt((s1^2/n1) +(s2^2/n2))
+
+
+
+## 3.  State the decision rule 
+
+Reject H0 if p ≤ alpha
+
+Otherwise, do not reject H0
+
+
+## 4. Compute the test statistic and the associated p-value
+
+```{r}
+data2 <- split(insurance, insurance$smoker)
+t.test(data2$yes$charges, data2$no$charges,        alternative="greater",  conf.level=0.95)
+```
+
+## 5. Conclusion
+
+Reject H0 since p-value (0.0001) is less than  to α (0.05).We have significant evidence at the α=0.05 level that μ1  > μ2. This means that the average charges of smokers are higher than those of non-smokers.
+
+
+
+
+
+#  Is there any differnce in insurance charges for male smoker and female smoker?
+
+
+## 1. Set up the hypotheses and select the alpha level 
+
+H0: μ1=μ2  (the mean of charge costs is same for males smoker and female  smokers)
+
+H1: μ1 != μ2 (the mean of charge costs is different for male and female smokers)
+
+alpha = 0.05
+
+
+
+## 2. Select the appropriate test-statistic 
+
+t = (x.bar1-x.bar2)/sqrt((s1^2/n1) +(s2^2/n2))
+
+
+## 3.  State the decision rule 
+
+Reject H0 if p ≤ alpha
+
+Otherwise, do not reject H0
+
+## 4. Compute the test statistic and the associated p-value
+
+```{r}
+male_smokers <- insurance %>%   group_by(sex) %>%
+   filter(sex == "male", smoker == "yes")
+male <- male_smokers$charges
+female_smokers <- insurance %>% group_by(sex) %>% filter(sex=="female", smoker=='yes')
+female <- female_smokers$charges
+t.test(male, female, alternative = "two.sided", conf.level = 0.95)
+```
+
+## 5. Conclusion
+
+Fail to reject H0 since p-value (0.09) is not less than  to α (0.05).We do not have significant evidence at the α=0.05 level that the population mean is different between male smokers and female smokers. That is, we are not able to reject the null hypothesis that the avg insurance charge is same for males smokers and female  smokers.
+
+
+
+```{r}
+insurance <- (insurance %>% mutate(bmi_cat = cut(insurance$bmi, breaks = c(0, 18.5, 25, 30, 60), labels = c("Under Weight", "Normal Weight", "Overweight", "Obese"))))
+```
+
+
+# Does the BMI vary by region?
+
+Does the BMI vary by region?
+
+I am Performing  a one way ANOVA using the aov function in R to assess.  Useing a significance level of α=0.05. Summarize the results using the 5-step procedure.  If the results of the overall model are significant, perform the appropriate pairwise comparisons using Tukey’s procedure to adjust for multiple comparisons and summarize these results. 
+
+
+1. Set up the hypothesis and select the alpha level
+
+H0: μnortheast = μnorthwest = μsoutheast = μsouthwest (All underlying population means are equal)
+
+H1: µi ≠ µj for some i and j (Not all of the underlying population means are equal)
+(At least one group mean is different from the others)
+
+α=0.05
+
+
+2. Select the appropriate test statistic 
+
+F = MSB / MSW
+
+3. State the decision rule
+
+Decision Rule: Reject H0 if p ≤ 0.05
+
+Otherwise, do not reject H0
+
+
+4.Compute the test statistic 
+
+```{r}
+insurance <- (insurance %>% mutate(bmi_cat = cut(insurance$bmi, breaks = c(0, 18.5, 25, 30, 60), labels = c("Under Weight", "Normal Weight", "Overweight", "Obese"))))
+
+insurance$region <- as.factor(insurance$region)
+bmi <- aov(bmi ~ region, data = insurance)
+summary(bmi)
+```
+5. Conclusion
+
+We can reject H0 (since the p-value < .0001 < alpha = .05, ). We have significant evidence at the alpha = 0.05 level that there is a difference in mean BMI between various regions.
+So we can say that BMI varies by region, and that at least one of the categorical region has a different mean BMI.
+
+Then using Tuckey's  procedure to adjust for multiple comparisons and summarize the results.
+
+
+```{r}
+TukeyHSD(bmi, conf.level = 0.95)
+```
+We can see that the  p-value of region(southeast-northeast, southwest-northeast,southeast-northwest,southwest-northwest and southwest-southeast) is less than alpha(0.05).
+
+This means that the these regions are significantly different.In other words, there is a 95% chance that every region has a different average BMI.
+
+Whereas for the northeast and northwest regions, the p-values are above the significance level. This means that northwest and northeast are not significantly different (they have a similar average BMI).
+
+
+
+
+# Summary
+
+- We can say that smoking has a big impact on insurance costs.
+
+- Insurance charges for male smokers and female smokers are almost the same.
+
+- BMI varies by region and Increases in the BMI score lead to rather small increase in insurance cost.
+
+- There a linear relationship between age and insurgence charges?
+
+## Limitations
+
+- Medical expenses increasing with increased number of dependents is to be expected. However, having three dependents covered by insurance seems to be cheaper than having two dependents, and five dependents sees a lesser increase in charges than four
+ 
+ - `charges` was right skewed and had to be normalized.
+ 
+ - Lastly, whether the model is robust can only be determined by knowing what is the acceptable cost of error. 
